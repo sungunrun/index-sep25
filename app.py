@@ -3,11 +3,11 @@ from flask_sqlalchemy import SQLAlchemy
 import json
 import re
 import sys
-
+# import psycopg2 as psycopg2
 
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///entriestest2.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://wak:7LZBAUBS09EWun82UdLAS8TXvOsLzVDR@oregon-postgres.render.com/oupindexdb'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 db = SQLAlchemy(app)
 
@@ -23,13 +23,13 @@ for i in [* range(3,772-23)]:
 
 
 class Entries(db.Model):
-    __tablename__ = 'entries_list'
+    __tablename__ = 'test2'
     id = db.Column(db.Integer, primary_key=True)
     entry_name = db.Column(db.String)
     see = db.Column(db.String)
-    seeAlso = db.Column(db.String)
-    sTokens = db.Column(db.String)
-    reTokens = db.Column(db.String)
+    seealso = db.Column(db.String)
+    stokens = db.Column(db.String)
+    retokens = db.Column(db.String)
     pages_all = db.Column(db.String)
     highlights = db.Column(db.String)
     pages_lists = db.Column(db.String)
@@ -56,12 +56,14 @@ def render_page(page_number_current):
         text=html_list[int(page_number[0])-3]
     if len(page_number)==2:
         first = int(page_number[0])-3
+        print(first, file=sys.stderr)
+        print(html_list[0])
         last = int(page_number[1])-3
         for page in [* range(first, last+1)]:
             text = text + html_list[page]
     highlights = text
 
-    stokens = curr_entry.sTokens
+    stokens = curr_entry.stokens
     repl = '( |\n|—)'
     stokens = re.sub('(_)', repl, stokens)
     stokens = stokens.split(',')
@@ -79,10 +81,11 @@ def render_page(page_number_current):
     for token in retokens:
         if token!= '':
             rehighlight_list.append(token)
+    print(rehighlight_list)
     for elem in shighlight_list:
-        highlights = re.sub(elem, '<span style="background-color:yellow">'+elem+'</span>', highlights, re.IGNORECASE)
+        highlights = re.sub(re.escape(elem), '<span style="background-color:yellow">'+elem+'</span>', highlights, re.IGNORECASE)
     for elem in rehighlight_list:
-        highlights = re.sub(elem, '<span style="background-color:aqua">'+elem+'</span>', highlights)
+        highlights = re.sub(re.escape(elem), '<span style="background-color:aqua">'+elem+'</span>', highlights)
     #entrynow = entrynow + ')'
     #curr_entry = re.split(',', page_number_current, 1)[1]
     #print(curr_entry)
@@ -92,10 +95,10 @@ def render_page(page_number_current):
 @app.route('/indiv_entry/<int:id>', methods=['POST', 'GET'])
 def indiv_entry(id):
     current_entry = Entries.query.get_or_404(id)
-    stokens = current_entry.sTokens
+    stokens = current_entry.stokens
     stokens = stokens.split(',')
     stokens = [token for token in stokens if token!='']
-    retokens = current_entry.reTokens
+    retokens = current_entry.retokens
     retokens=retokens.split(',')
     retokens = [token for token in retokens if token!='']
     tokens = stokens + retokens
@@ -123,6 +126,7 @@ def indiv_entry(id):
                 current_entry.emphasized_pages = x+','
             else:
                 current_entry.emphasized_pages = current_entry.emphasized_pages + x + ','
+            db.session.add(current_entry)
             db.session.commit()
             return redirect('/')
             # print(x, file=sys.stderr)
